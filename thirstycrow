@@ -1,0 +1,233 @@
+using System.Collections;
+using System.Globalization;
+using System.Net.Security;
+using UnityEngine;
+
+public class ClickDetector : MonoBehaviour
+{
+    public GameObject bird;
+    public GameObject stones;
+    public GameObject pot;
+    public Animator birdAnimator;
+    public string idleStateName = "Idle";
+    public string movingStateOneName = "Moving";
+    public string movingStateTwoName = "Moving";
+    public string movingStateThreeName = "Moving";
+    public float moveSpeed = 5.0f;
+    public float rotateSpeed = 5.0f;
+    public float waitTime = 0.2f;
+    public float stoneEdge = 0f;
+    public float potEdge = -0.5f;
+    private Rigidbody rb;
+
+    private bool done = false;
+    private bool drop = false;
+    private bool isMoving = false;
+    private Vector3 targetPosition;
+    private uint stepNum = 0;
+
+    public GameObject prefabToInstantiate;
+    public GameObject ocean;
+
+    [SerializeField]
+    private float tiltAngle = 0f;
+    private Quaternion startRotation;
+
+    void Start()
+    {
+        // Set the default animation state to idle
+        birdAnimator.Play(idleStateName);
+        startRotation = bird.transform.rotation;
+    }
+
+    void Update()
+    {
+        if (done)
+        {
+            FlyAway();
+            return;
+        }
+
+        if (isMoving)
+        {
+            if (bird.transform.position == targetPosition)
+            {
+                isMoving = false;
+                if (drop)
+                {
+                    DropStone();
+                    drop = false;
+                }
+                birdAnimator.Play(idleStateName);
+            }
+            else
+            {
+                bird.transform.position = Vector3.MoveTowards(bird.transform.position, targetPosition, moveSpeed * Time.deltaTime);
+                bird.transform.rotation = Quaternion.Slerp(bird.transform.rotation, Quaternion.LookRotation(targetPosition - bird.transform.position), rotateSpeed * Time.deltaTime);
+            }
+        }
+
+        if (Input.GetMouseButtonDown(0))
+        {
+            // Raycast to detect objects clicked on
+            RaycastHit hit;
+            if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out hit))
+            {
+                // Check if the cube or pot was clicked on
+                if ((hit.collider.gameObject == stones || hit.collider.gameObject == pot) && !isMoving)
+                {
+                    stepNum++;
+
+                    if (hit.collider.gameObject == stones)
+                    {
+                        targetPosition = stones.transform.position;
+                    }
+                    else if (hit.collider.gameObject == pot)
+                    {
+                        targetPosition = pot.transform.position;
+                    }
+                    
+                    
+                    isMoving = true;
+
+                    if (stepNum == 1)
+                    {
+                        birdAnimator.Play(movingStateOneName); 
+                        targetPosition = stones.transform.position;
+                        float heightOffset = stones.GetComponent<Renderer>().bounds.size.y / 2.0f;
+                        targetPosition.y += heightOffset;
+                        drop = false;
+                        //targetPosition.x += stoneEdge;
+                    } 
+                    else if (stepNum == 2)
+                    {
+                        birdAnimator.Play(movingStateTwoName);
+                        targetPosition = pot.transform.position;
+                        float heightOffset = pot.GetComponent<Renderer>().bounds.size.y / 1.0f;
+                        targetPosition.y += heightOffset;
+                        targetPosition.x += potEdge;
+                        drop = true;
+                    }
+                    else if (stepNum == 3)
+                    {
+                        birdAnimator.Play(movingStateOneName); 
+                        targetPosition = stones.transform.position;
+                        float heightOffset = stones.GetComponent<Renderer>().bounds.size.y / 2.0f;
+                        targetPosition.y += heightOffset;
+                        drop = false;
+                        //targetPosition.x += stoneEdge;
+                    }
+                    else if (stepNum == 4)
+                    {
+                        birdAnimator.Play(movingStateTwoName); 
+                        targetPosition = pot.transform.position;
+                        float heightOffset = pot.GetComponent<Renderer>().bounds.size.y / 1.0f;
+                        targetPosition.y += heightOffset;
+                        targetPosition.x += potEdge;
+                        drop = true;
+                    }
+                    else if (stepNum == 5)
+                    {
+                        birdAnimator.Play(movingStateOneName); 
+                        targetPosition = stones.transform.position;
+                        float heightOffset = stones.GetComponent<Renderer>().bounds.size.y / 2.0f;
+                        targetPosition.y += heightOffset;
+                        drop = false;
+                        //targetPosition.x += stoneEdge;
+                    }
+                    else if (stepNum == 6)
+                    {
+                        birdAnimator.Play(movingStateTwoName); 
+                        targetPosition = pot.transform.position;
+                        float heightOffset = pot.GetComponent<Renderer>().bounds.size.y / 1.0f;
+                        targetPosition.y += heightOffset;
+                        targetPosition.x += potEdge;
+                        drop = true;
+                    }
+                    else if (stepNum == 7)
+                    {
+                        DrinkWater();
+                    }
+                    else if (stepNum == 8)
+                    {
+                        done = true;
+                    }
+                }
+            }
+        }
+    }
+
+    void FlyAway()
+    {
+       
+        birdAnimator.Play(movingStateOneName);
+
+        // Get a direction away from the pot
+        Vector3 awayDirection = (pot.transform.position - stones.transform.position).normalized;
+
+        // Move the bird away from the pot in that direction
+        bird.transform.position += awayDirection * moveSpeed * Time.deltaTime;
+        bird.transform.rotation = Quaternion.Slerp(bird.transform.rotation, Quaternion.LookRotation(awayDirection), rotateSpeed * Time.deltaTime);
+
+        // Check if the bird has flown away
+        if (Vector3.Distance(bird.transform.position, pot.transform.position) > 50.0f)
+        {
+            StartCoroutine(WaitForNextMove());
+        }
+    }
+
+    void DrinkWater()
+    {
+
+        targetPosition = pot.transform.position;
+        float heightOffset = pot.GetComponent<Renderer>().bounds.size.y / 1.1f;
+        targetPosition.y += heightOffset;
+        targetPosition.x += -0.55f;
+        targetPosition.z += 0.25f;
+        bird.transform.position = Vector3.MoveTowards(bird.transform.position, targetPosition, moveSpeed * Time.deltaTime);
+        birdAnimator.Play(idleStateName);
+
+        // Calculate tilt angle based on animation progress
+        //tiltAngle = 90f;
+        float animationProgress = birdAnimator.GetCurrentAnimatorStateInfo(0).normalizedTime % 1f;
+        float currentTiltAngle = tiltAngle * animationProgress;
+
+        // Tilt the object
+    Quaternion newRotation = startRotation * Quaternion.Euler(25f, currentTiltAngle, -45f );
+        bird.transform.rotation = newRotation;
+
+    }
+    // Coroutine to add a delay between each movement update
+    IEnumerator WaitForNextMove()
+    {
+        yield return new WaitForSeconds(waitTime);
+
+        done = false;
+        birdAnimator.Play(idleStateName);
+        isMoving = false;
+        targetPosition = Vector3.zero;
+    }
+
+    void DropStone()
+    {
+
+        Vector3 instantiatePosition = pot.transform.position;
+        instantiatePosition.x = pot.transform.position.x;
+        instantiatePosition.y = pot.transform.position.y + 3f;
+
+
+        if (ocean.transform.position.y <= 0.496f)
+        {
+            ocean.transform.position += new Vector3(0, 0.075f, 0);
+            GameObject newObject = Instantiate(prefabToInstantiate, instantiatePosition, Quaternion.identity);
+            newObject.transform.parent = pot.transform;
+
+            Rigidbody rigidbody = newObject.AddComponent<Rigidbody>();
+            rigidbody.useGravity = true;
+            rigidbody.mass = 0.01f;
+
+        }
+
+
+    }
+}
